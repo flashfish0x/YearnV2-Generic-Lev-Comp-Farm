@@ -8,7 +8,11 @@ def test_clone(
     strategy,
     Strategy,
     token,
-    cToken,
+    cToken, 
+    spookyrouter, 
+    scream, 
+    screamComptroller, 
+    weth,
     pm,
     factory,
     amount,
@@ -20,7 +24,7 @@ def test_clone(
     actions.first_deposit_and_harvest(
         vault, strategy, token, user, gov, amount, RELATIVE_APPROX
     )
-    cloned_strategy = factory.cloneLevComp(vault, cToken, {"from": gov}).return_value
+    cloned_strategy = factory.cloneLevComp(vault, cToken,spookyrouter, scream, screamComptroller, weth, 1, {"from": gov}).return_value
     cloned_strategy = Strategy.at(cloned_strategy)
 
     # free funds from old strategy

@@ -18,7 +18,7 @@ def generate_profit(strategy, blocks_sleep):
     # setting min comp to sell to 0 to ensure that we sell it (even if not gas efficient)
     print(f"Generating profit for {blocks_sleep} blocks")
     total_assets_start = strategy.estimatedTotalAssets()
-    chain.sleep(int(blocks_sleep * 13.15))
+    chain.sleep(int(blocks_sleep)) #1 block per second guess
     chain.mine(blocks_sleep)
     strategy.getLivePosition()  # to update
     total_assets_end = strategy.estimatedTotalAssets()

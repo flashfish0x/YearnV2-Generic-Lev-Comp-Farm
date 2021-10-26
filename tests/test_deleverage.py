@@ -10,6 +10,7 @@ def test_large_deleverage_to_zero(
     # Deposit to the vault and harvest
     actions.user_deposit(user, vault, token, amount)
     utils.sleep(1)
+    strategy.setMinCompToSell(1, {"from": gov})
     strategy.harvest({"from": strategist})
 
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == amount
@@ -21,7 +22,7 @@ def test_large_deleverage_to_zero(
 
     vault.revokeStrategy(strategy.address, {"from": gov})
     n = 0
-    while vault.debtOutstanding(strategy) > strategy.minWant() and n < 6:
+    while vault.debtOutstanding(strategy) > strategy.minWant() and n < 10:
         utils.sleep(1)
         chain.mine(5)
         print(f"Iteration: {n}")

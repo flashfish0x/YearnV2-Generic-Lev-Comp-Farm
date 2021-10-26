@@ -15,6 +15,7 @@ def strategy_status(vault, strategy):
     print(f"--- Strategy {strategy.name()} ---")
     print(f"Performance fee {status['performanceFee']}")
     print(f"Debt Ratio {status['debtRatio']}")
+    print(f"Estimated Assets {to_units(vault, strategy.estimatedTotalAssets())}")
     print(f"Total Debt {to_units(vault, status['totalDebt'])}")
     print(f"Total Gain {to_units(vault, status['totalGain'])}")
     print(f"Total Loss {to_units(vault, status['totalLoss'])}")

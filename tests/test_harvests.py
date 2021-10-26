@@ -10,6 +10,7 @@ def test_profitable_harvest(
 
     # Harvest 1: Send funds through the strategy
     chain.sleep(1)
+    strategy.setMinCompToSell(1, {"from": strategist})
     strategy.harvest({"from": strategist})
     total_assets = strategy.estimatedTotalAssets()
     assert pytest.approx(total_assets, rel=RELATIVE_APPROX) == amount
@@ -45,6 +46,7 @@ def test_lossy_harvest(
 
     # Harvest 1: Send funds through the strategy
     chain.sleep(1)
+    strategy.setMinCompToSell(1, {"from": strategist})
     strategy.harvest({"from": strategist})
     total_assets = strategy.estimatedTotalAssets()
     assert pytest.approx(total_assets, rel=RELATIVE_APPROX) == amount
@@ -79,6 +81,7 @@ def test_choppy_harvest(
 
     # Harvest 1: Send funds through the strategy
     chain.sleep(1)
+    strategy.setMinCompToSell(1, {"from": strategist})
     strategy.harvest({"from": strategist})
 
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == amount

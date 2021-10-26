@@ -4,19 +4,7 @@ from brownie import reverts
 
 def test_restricted_fn_user(strategy, user):
     with reverts("!authorized"):
-        strategy.setUniV3PathFees(0, 0, {"from": user})
-
-    with reverts("!authorized"):
         strategy.setDontClaimComp(False, {"from": user})
-
-    with reverts("!authorized"):
-        strategy.setUseUniV3(False, {"from": user})
-
-    with reverts("!authorized"):
-        strategy.setToggleV2Router({"from": user})
-
-    with reverts("!authorized"):
-        strategy.setFlashMintActive(False, {"from": user})
 
     with reverts("!authorized"):
         strategy.setForceMigrate(False, {"from": user})
