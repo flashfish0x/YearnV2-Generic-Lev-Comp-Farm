@@ -40,11 +40,12 @@ def test_apr_wftm(
     vault.setManagementFee(0, {"from": gov}) # set management fee to 0 so that time works
     
 
-    strategy.setMinCompToSell(1, {"from": gov})
+    strategy.setMinCompToSell(0, {"from": gov})
     #enormousrunningstrategy.setMinWant(0, {"from": gov})
     #assert enormousrunningstrategy.minCompToSell() == 1
     strategy.harvest({"from": gov})
-    chain.sleep(21600)
+    start_time = chain.time()
+    chain.sleep(25)
 
     print("mgm fee: ", vault.managementFee())
     print("perf fee: ", vault.performanceFee())
@@ -61,6 +62,7 @@ def test_apr_wftm(
         
 
         strategy.harvest({"from": gov})
+        end_time = chain.time()
         #wait 6 hours. shouldnt mess up next round as compound uses blocks
         print("Locked: ", vault.lockedProfit())
         assert vault.lockedProfit() > 0 # some profit should be unlocked
@@ -90,8 +92,10 @@ def test_apr_wftm(
         assert time != 0
         ppsProfit = (ppsAfter - ppsBefore) / 1e18 / waitBlock * blocks_per_year
         apr = (totalReturns / startingBalance) * (blocks_per_year / time)
+        time_apr = (totalReturns/startingBalance) * ((365*3600*24)/(end_time-start_time))
         print(f"implied apr assets: {apr:.8%}")
         print(f"implied apr pps: {ppsProfit:.8%}")
+        print(f"implied apr time: {time_apr:.8%}")
 
 
     print(strategy.minWant()/1e18)

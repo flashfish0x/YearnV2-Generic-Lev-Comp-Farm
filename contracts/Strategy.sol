@@ -23,10 +23,19 @@ interface IERC20Extended is IERC20 {
     function symbol() external view returns (string memory);
 }
 
+interface ILiquidityMining{
+    function claimRewards(address[] memory holders, address[] memory cTokens, address[] memory rewards, bool borrowers, bool suppliers) external;
+    function rewardSupplySpeeds(address, address) external view returns (uint256, uint256, uint256);
+    function rewardBorrowSpeeds(address, address) external view returns (uint256, uint256, uint256);
+    function rewardTokensMap(address) external view returns (bool);
+}
+
 contract Strategy is BaseStrategy {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
+
+    address private constant yfi = address(0x29b0Da86e484E1C0029B56e817912d778aC0EC69);
 
     // Comptroller address for compound.finance
     ComptrollerI public compound;
@@ -54,7 +63,7 @@ contract Strategy is BaseStrategy {
     bool public forceMigrate;
     bool public withdrawChecks;
 
-    bool public splitCompDistribution;
+    ILiquidityMining public liquidityMining;
 
     constructor(address _vault, address _cToken, address _router, address _comp, address _comptroller, address _weth, uint256 _secondsPerBlock) public BaseStrategy(_vault) {
         _initializeThis(_cToken, _router, _comp, _comptroller, _weth, _secondsPerBlock);
@@ -65,7 +74,7 @@ contract Strategy is BaseStrategy {
     }
 
     function name() external view override returns (string memory) {
-        return "GenLevCompV3NoFlash";
+        return "GenLevCompV3NoFlashIB";
     }
 
     function initialize(address _vault, address _cToken, address _router, address _comp, address _comptroller, address _weth, uint256 _secondsPerBlock) external {
@@ -82,6 +91,8 @@ contract Strategy is BaseStrategy {
         require(IERC20Extended(address(want)).decimals() <= 18); // dev: want not supported
         currentRouter = IUniswapV2Router02(_router);
 
+        liquidityMining = ILiquidityMining(address(0xa9d61326709B5C2D5897e0753998DFf7F1e974Fe));
+
         //pre-set approvals
         approveTokenMax(comp, address(currentRouter));
         approveTokenMax(address(want), address(cToken));
@@ -95,8 +106,14 @@ contract Strategy is BaseStrategy {
         // set minWant to 1e-5 want
         minWant = uint256(uint256(10)**uint256((IERC20Extended(address(want))).decimals())).div(1e5);
         minCompToSell = 0.1 ether; //may need to be changed depending on what comp is
-        collateralTarget = 0.73 ether;
         blocksToLiquidationDangerZone = 46500;
+
+        (, uint256 collateralFactorMantissa, ) = compound.markets(address(cToken));
+        collateralTarget = collateralFactorMantissa.sub(0.02 ether);
+
+        address[] memory markets = new address[](1);
+        markets[0] = _cToken;
+        compound.enterMarkets(markets);
     }
 
     /*
@@ -117,10 +134,6 @@ contract Strategy is BaseStrategy {
 
     function setForceMigrate(bool _force) external onlyGovernance {
         forceMigrate = _force;
-    }
-
-    function setSplitCompDistribution(bool _split) external management {
-        splitCompDistribution = _split;
     }
 
     function setMinCompToSell(uint256 _minCompToSell) external management {
@@ -255,16 +268,21 @@ contract Strategy is BaseStrategy {
 
         uint256 distributionPerBlockSupply;
         uint256 distributionPerBlockBorrow;
-
-        if(splitCompDistribution){
-            distributionPerBlockSupply = compound.compSupplySpeeds(address(cToken));
-            distributionPerBlockBorrow = compound.compBorrowSpeeds(address(cToken));
-
-        }else{
-            //pre 062 forks
-            distributionPerBlockSupply = compound.compSpeeds(address(cToken));
-            distributionPerBlockBorrow = distributionPerBlockSupply;
+        // Do in block to prevent stack too deep error
+        {
+            uint256 supplyStart;
+            uint256 supplyEnd;
+            (distributionPerBlockSupply, supplyStart, supplyEnd) = liquidityMining.rewardSupplySpeeds(comp, address(cToken));
+            if (supplyStart > block.timestamp || supplyEnd < block.timestamp){
+                distributionPerBlockSupply = 0;
+            }
             
+            uint256 borrowStart;
+            uint256 borrowEnd;
+            (distributionPerBlockBorrow, borrowStart, borrowEnd) = liquidityMining.rewardBorrowSpeeds(comp, address(cToken));
+            if (borrowStart > block.timestamp || borrowEnd < block.timestamp){
+                distributionPerBlockBorrow = 0;
+            }
         }
 
         uint256 totalBorrow = cToken.totalBorrows();
@@ -578,10 +596,15 @@ contract Strategy is BaseStrategy {
         if (dontClaimComp) {
             return;
         }
-        CTokenI[] memory tokens = new CTokenI[](1);
-        tokens[0] = cToken;
 
-        compound.claimComp(address(this), tokens);
+        address[] memory holders = new address[](1);
+        holders[0] = address(this);
+        address[] memory tokens = new address[](1);
+        tokens[0] = address(cToken);
+        address[] memory rewards = new address[](1);
+        rewards[0] = comp;
+
+        liquidityMining.claimRewards(holders, tokens, rewards, true, true);
     }
 
     //sell comp function
@@ -596,15 +619,22 @@ contract Strategy is BaseStrategy {
     }
 
     function getTokenOutPathV2(address _tokenIn, address _tokenOut) internal view returns (address[] memory _path) {
-        bool isWeth = _tokenIn == address(weth) || _tokenOut == address(weth);
-        _path = new address[](isWeth ? 2 : 3);
-        _path[0] = _tokenIn;
-
-        if (isWeth) {
-            _path[1] = _tokenOut;
+        if (_tokenOut == yfi) {
+            _path = new address[](4);
+            _path[0] = _tokenIn;
+            _path[1] = address(weth); // wftm
+            _path[2] = address(0x74b23882a30290451A17c44f4F05243b6b58C76d); // weth
+            _path[3] = yfi;
         } else {
-            _path[1] = address(weth);
-            _path[2] = _tokenOut;
+            bool isWeth = _tokenIn == address(weth) || _tokenOut == address(weth);
+            _path = new address[](isWeth ? 2 : 3);
+            _path[0] = _tokenIn;
+            if (isWeth) {
+                _path[1] = _tokenOut;
+            } else {
+                _path[1] = address(weth);
+                _path[2] = _tokenOut;
+            }
         }
     }
 

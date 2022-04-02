@@ -10,8 +10,8 @@ def test_clone(
     token,
     cToken, 
     spookyrouter, 
-    scream, 
-    screamComptroller, 
+    ib, 
+    ibComptroller, 
     weth,
     pm,
     factory,
@@ -24,7 +24,7 @@ def test_clone(
     actions.first_deposit_and_harvest(
         vault, strategy, token, user, gov, amount, RELATIVE_APPROX
     )
-    cloned_strategy = factory.cloneLevComp(vault, cToken,spookyrouter, scream, screamComptroller, weth, 1, {"from": gov}).return_value
+    cloned_strategy = factory.cloneLevComp(vault, cToken,spookyrouter, ib, ibComptroller, weth, 1, {"from": gov}).return_value
     cloned_strategy = Strategy.at(cloned_strategy)
 
     # free funds from old strategy
@@ -47,4 +47,4 @@ def test_clone(
     assert cloned_strategy.estimatedTotalAssets() > 0
 
     # the strategy will have losses if we withdrew 100% of funds in it (because it does not sell comp to avoid sandwich attacks)
-    tx = vault.withdraw(vault.balanceOf(user), user, 1_000, {"from": user})
+    vault.withdraw(vault.balanceOf(user), user, 1_000, {"from": user})

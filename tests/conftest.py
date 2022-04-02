@@ -51,14 +51,16 @@ def keeper(accounts):
 
 token_addresses = {
     "WFTM": "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83",  # WFTM
-    
+    "YFI": "0x29b0Da86e484E1C0029B56e817912d778aC0EC69",
+    "MIM": "0x82f0B8B456c1A451378467398982d4834b6829c1",
 }
 
 # TODO: uncomment those tokens you want to test as want
 @pytest.fixture(
     params=[
         'WFTM', # WBTC
-        # "YFI",  # YFI
+        'YFI',  # YFI
+        'MIM', 
         # "WETH",  # WETH
         # 'LINK', # LINK
         # 'USDT', # USDT
@@ -71,7 +73,9 @@ def token(interface, request):
 
 
 cToken_addresses = {
-    "WFTM": "0x5AA53f03197E08C4851CAD8C92c7922DA5857E5d"
+    "WFTM": "0xd528697008aC67A21818751A5e3c58C8daE54696",
+    "YFI": "0x0980f2F0D2af35eF2c4521b2342D59db575303F7",
+    "MIM": "0x46F298D5bB6389ccb6C1366bB0C8a30892CA2f7C",
 }
 
 
@@ -81,7 +85,9 @@ def cToken(token):
 
 
 whale_addresses = {
-    "WFTM": "0x39B3bd37208CBaDE74D0fcBDBb12D606295b430a" #geist
+    "WFTM": "0x39B3bd37208CBaDE74D0fcBDBb12D606295b430a", #geist
+    "YFI": "0xE04C26444d37fE103B9cc8033c99b09D47056f51",
+    "MIM": "0xa7821C3e9fC1bF961e280510c471031120716c3d",
 }
 
 
@@ -90,7 +96,9 @@ def token_whale(token):
     yield whale_addresses[token.symbol()]
 
 cToken_whale_addresses = {
-    "WFTM": "0x9258A95a684C18cFc2EAB859d22366c278bE11b3"
+    "WFTM": "0x431e81E5dfB5A24541b5Ff8762bDEF3f32F96354",
+    "YFI": "0xbef3fC8d2C89B2cE17e6A948a2764AD2D0951cE8",
+    "MIM": "0xE5350E927B904FdB4d2AF55C566E269BB3df1941",
 }
 
 
@@ -115,7 +123,9 @@ def cToken_whale(token):
 #    print(f"Available liquidity: {cToken.getCash()/10**token.decimals()}")
 
 token_prices = {
-    "WFTM": 3
+    "WFTM": 3,
+    "YFI": 30000,
+    "MIM": 1,
 }
 
 
@@ -139,13 +149,13 @@ def weth(interface):
     yield interface.ERC20(token_address)
 
 @pytest.fixture
-def screamComptroller(interface):
-    token_address = "0x260E596DAbE3AFc463e75B6CC05d8c46aCAcFB09"
+def ibComptroller(interface):
+    token_address = "0x4250A6D3BD57455d7C6821eECb6206F507576cD2"
     yield interface.ComptrollerI(token_address)
 
 @pytest.fixture
-def scream(interface):
-    token_address = "0xe0654C8e6fd4D733349ac7E09f6f23DA256bF475"
+def ib(interface):
+    token_address = "0x00a35FD824c717879BF370E70AC6868b95870Dfb"
     yield interface.ERC20(token_address)
 
 @pytest.fixture
@@ -189,16 +199,16 @@ def reentry_test(user, ReentryTest):
 
 
 @pytest.fixture
-def strategy(strategist, keeper, vault, Strategy, gov, cToken, spookyrouter, scream, screamComptroller, weth):
-    strategy = strategist.deploy(Strategy, vault, cToken,spookyrouter, scream, screamComptroller, weth, 1)
+def strategy(strategist, keeper, vault, Strategy, gov, cToken, spookyrouter, ib, ibComptroller, weth):
+    strategy = strategist.deploy(Strategy, vault, cToken,spookyrouter, ib, ibComptroller, weth, 1)
     strategy.setKeeper(keeper)
     vault.addStrategy(strategy, 10_000, 0, 2 ** 256 - 1, 0, {"from": gov})
     yield strategy
 
 
 @pytest.fixture
-def factory(LevCompFactory, vault, cToken, strategist, gov, spookyrouter, scream, screamComptroller, weth):
-    factory = strategist.deploy(LevCompFactory, vault, cToken,spookyrouter, scream, screamComptroller, weth, 1)
+def factory(LevCompFactory, vault, cToken, strategist, gov, spookyrouter, ib, ibComptroller, weth):
+    factory = strategist.deploy(LevCompFactory, vault, cToken,spookyrouter, ib, ibComptroller, weth, 1)
     yield factory
 
 
